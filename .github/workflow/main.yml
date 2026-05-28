@@ -31,20 +31,25 @@ jobs:
       run: |
         mlflow run MLproject --env-manager=local
     - name: Get latest MLflow run_id
+      shell: python
       run: |
-        import mlflow
         import os
-        runs = mlflow.search_runs(experiment_ids=["0"], max_results=1, order_by=["attributes.start_time DESC"])
+        import mlflow
 
-        if not runs.empty:
-          run_id = runs.iloc[0]["run_id"]
-          with open(os.environ['GITHUB_ENV'], 'a') as f:
-            f.write(f"RUN_ID={run_id}\n")
-          print(f"Successfully found Run ID: {run_id}")
-        else:
-          print("No runs found in MLflow tracking!")
-          exit(1)
-        shell: python
+        runs = mlflow.search_runs(
+            experiment_ids=["0"],
+            max_results=1,
+            order_by=["attributes.start_time DESC"],
+        )
+
+        if runs.empty:
+            raise SystemExit("No MLflow runs found")
+
+        run_id = runs.iloc[0]["run_id"]
+        with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+            env_file.write(f"RUN_ID={run_id}\n")
+
+        print(f"Latest run_id: {run_id}") 
     - name: Build Docker Model
       run: |
         mlflow models build-docker --model-uri "runs:/$RUN_ID/model" --name "cc"
